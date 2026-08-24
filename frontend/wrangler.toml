@@ -1,0 +1,8 @@
+name = "agri-marketplace-web"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".open-next/assets"
+
+[vars]
+# NEXT_PUBLIC_API_URL est injectée au build — voir "Build Variables and secrets"
+# dans le dashboard Cloudflare Pages, pas ici (ce fichier est commité au repo).

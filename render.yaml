@@ -1,0 +1,37 @@
+# Blueprint Render — déploie uniquement l'API backend.
+# Le frontend Next.js est déployé séparément sur Cloudflare Pages (voir README).
+# La base de données n'est PAS définie ici : elle vit sur Neon, pas sur Render.
+
+services:
+  - type: web
+    name: agri-marketplace-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && npm run start:prod
+    envVars:
+      - key: DATABASE_URL
+        sync: false # valeur Neon, à renseigner manuellement dans le dashboard Render
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        value: agri-marketplace-media
+      - key: R2_PUBLIC_URL
+        sync: false
+      - key: FEDAPAY_PUBLIC_KEY
+        sync: false
+      - key: FEDAPAY_SECRET_KEY
+        sync: false
+      - key: FEDAPAY_ENV
+        value: sandbox
+      - key: FRONTEND_URL
+        sync: false # URL du frontend Cloudflare Pages, une fois connue

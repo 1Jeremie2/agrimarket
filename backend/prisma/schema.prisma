@@ -1,0 +1,222 @@
+// Schéma de données - Marketplace agricole (Bénin)
+// Généré à partir du modèle validé : User, Producer, Product, Category, Order, OrderItem, Review
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  BUYER
+  PRODUCER
+  ADMIN
+}
+
+enum BuyerType {
+  PARTICULIER
+  PRO
+}
+
+enum ProducerStatus {
+  EN_ATTENTE
+  VALIDE
+  SUSPENDU
+}
+
+enum DeliveryMode {
+  RETRAIT_SUR_PLACE
+  LIVRAISON_PRODUCTEUR
+  LES_DEUX
+}
+
+enum ProductUnit {
+  KG
+  G
+  LITRE
+  BOTTE
+  PIECE
+  CAGETTE
+}
+
+enum ProductStatus {
+  DISPONIBLE
+  RUPTURE
+  ARCHIVE
+}
+
+enum OrderStatus {
+  EN_ATTENTE
+  CONFIRMEE
+  EXPEDIEE
+  LIVREE
+  ANNULEE
+}
+
+enum PaymentStatus {
+  EN_ATTENTE
+  PAYE
+  ECHOUE
+}
+
+enum PayoutStatus {
+  NON_REVERSE
+  REVERSE
+}
+
+enum PaymentOperator {
+  MTN
+  MOOV
+  CELTIIS
+}
+
+model PlatformPaymentAccount {
+  id           String         @id @default(uuid())
+  operator     PaymentOperator
+  phoneNumber  String         @map("phone_number")
+  accountName  String         @map("account_name") // nom du titulaire, affiché pour rassurer l'acheteur
+  active       Boolean        @default(true)
+  createdAt    DateTime       @default(now()) @map("created_at")
+
+  @@map("platform_payment_accounts")
+}
+
+model HeroImage {
+  id           String   @id @default(uuid())
+  imageUrl     String   @map("image_url")
+  altText      String?  @map("alt_text") // texte alternatif, accessibilité + SEO
+  displayOrder Int      @default(0) @map("display_order")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("hero_images")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  password     String
+  phone        String?
+  role         Role
+  buyerType    BuyerType? @map("buyer_type")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  producer     Producer?
+  ordersAsBuyer Order[]  @relation("BuyerOrders")
+  reviews      Review[]
+
+  @@map("users")
+}
+
+model Producer {
+  id              String         @id @default(uuid())
+  userId          String         @unique @map("user_id")
+  user            User           @relation(fields: [userId], references: [id])
+  farmName        String         @map("farm_name")
+  description     String?
+  address         String?
+  latitude        Float?
+  longitude       Float?
+  status          ProducerStatus @default(EN_ATTENTE)
+  siret           String?
+  deliveryMode    DeliveryMode?  @map("delivery_mode")
+  deliveryZone    String?        @map("delivery_zone")
+  mobileMoneyAccount String?     @map("mobile_money_account") // pour reversement manuel (FedaPay)
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  products        Product[]
+  orders          Order[]
+  reviews         Review[]
+
+  @@map("producers")
+}
+
+model Category {
+  id       String     @id @default(uuid())
+  name     String
+  parentId String?    @map("parent_id")
+  parent   Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryToCategory")
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id           String        @id @default(uuid())
+  producerId   String        @map("producer_id")
+  producer     Producer      @relation(fields: [producerId], references: [id])
+  name         String
+  description  String?
+  categoryId   String?       @map("category_id")
+  category     Category?     @relation(fields: [categoryId], references: [id])
+  priceB2c     Decimal       @map("price_b2c") @db.Decimal(10, 2)
+  priceB2b     Decimal       @map("price_b2b") @db.Decimal(10, 2)
+  unit         ProductUnit
+  available    Boolean       @default(true)
+  photoUrl     String?       @map("photo_url")
+  status       ProductStatus @default(DISPONIBLE)
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  orderItems   OrderItem[]
+
+  @@map("products")
+}
+
+model Order {
+  id                  String        @id @default(uuid())
+  buyerId             String        @map("buyer_id")
+  buyer               User          @relation("BuyerOrders", fields: [buyerId], references: [id])
+  producerId          String        @map("producer_id")
+  producer            Producer      @relation(fields: [producerId], references: [id])
+  status              OrderStatus   @default(EN_ATTENTE)
+  totalAmount         Decimal       @map("total_amount") @db.Decimal(10, 2)
+  deliveryModeChosen  DeliveryMode  @map("delivery_mode_chosen")
+  deliveryAddress     String?       @map("delivery_address")
+  paymentStatus       PaymentStatus @default(EN_ATTENTE) @map("payment_status")
+  paymentReference    String        @unique @map("payment_reference") // code affiché sur le "bon de paiement"
+  paymentProofUrl     String?       @map("payment_proof_url") // capture d'écran envoyée par l'acheteur
+  paymentConfirmedAt  DateTime?     @map("payment_confirmed_at")
+  payoutStatus        PayoutStatus  @default(NON_REVERSE) @map("payout_status")
+  payoutDate          DateTime?     @map("payout_date")
+  payoutReference      String?       @map("payout_reference")
+  createdAt           DateTime      @default(now()) @map("created_at")
+
+  items               OrderItem[]
+  review               Review?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String   @id @default(uuid())
+  orderId    String   @map("order_id")
+  order      Order    @relation(fields: [orderId], references: [id])
+  productId  String   @map("product_id")
+  product    Product  @relation(fields: [productId], references: [id])
+  quantity   Decimal  @db.Decimal(10, 2)
+  unitPrice  Decimal  @map("unit_price") @db.Decimal(10, 2)
+  subtotal   Decimal  @db.Decimal(10, 2)
+
+  @@map("order_items")
+}
+
+model Review {
+  id          String   @id @default(uuid())
+  orderId     String   @unique @map("order_id")
+  order       Order    @relation(fields: [orderId], references: [id])
+  buyerId     String   @map("buyer_id")
+  buyer       User     @relation(fields: [buyerId], references: [id])
+  producerId  String   @map("producer_id")
+  producer    Producer @relation(fields: [producerId], references: [id])
+  rating      Int
+  comment     String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("reviews")
+}

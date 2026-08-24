@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-white text-ink antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  ::selection {
+    @apply bg-brand-light text-forest;
+  }
+}
+
+@layer utilities {
+  .container-app {
+    @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+  .grid-12 {
+    @apply grid grid-cols-4 gap-4 sm:grid-cols-8 sm:gap-6 lg:grid-cols-12 lg:gap-8;
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+}
